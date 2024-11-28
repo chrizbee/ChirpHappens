@@ -7,7 +7,7 @@ To make the device as small as possible, the following hardware was used:
 
 - Microcontroller: [NoLogo ESP32-C3 SuperMini](https://www.nologo.tech/product/esp32/esp32c3SuperMini/esp32C3SuperMini.html), [Pinout](https://www.sudo.is/docs/esphome/boards/esp32c3supermini/)
 - Microphone: [INMP441 MEMS I2S Microphone](https://www.berrybase.de/en/inmp441-mems-omnidirektionales-mikrofonmodul-i2s-interface)
-- Case: TODO: Printables Link
+- Case: [ChirpHappens on Printables](https://www.printables.com/model/1090007-chirphappens)
 
 ![](images/esp32c3_supermini.png) ![](images/inmp441.png) ![](images/hat.png)
 
