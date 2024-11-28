@@ -1,0 +1,4 @@
+.pio
+.vscode
+.esphome
+components/chirphappens/__pycache__
