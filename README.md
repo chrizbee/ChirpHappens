@@ -22,8 +22,8 @@ An example YAML configuration for the mentioned hardware can be found [here](exa
 Run the following commands to build and run the example configuration.
 
 ```bash
-esphome build example.py # Build only
-esphome run example.py   # Build & run
+esphome build example.yaml # Build only
+esphome run example.yaml   # Build & run
 ```
 
 ### Configuration
