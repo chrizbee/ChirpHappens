@@ -68,6 +68,11 @@ binary_sensor:
     # Sequence will fail if the pause is longer than pause_ms + max_delta_time
     max_delta_time: 150
     
+    # Number of consecutive frequency detections to register one whistle tone in the sequence
+    # The time that is needed for the specified number of detections can be calculated like this
+    # time = (buffer_size / sample_rate) * consecutive_detections
+    # consecutive_detections: 5
+    
     # Peak amplitude threshold after FFT
     peak_threshold: 1e8
     

@@ -10,6 +10,7 @@ CONF_SEQUENCE = "sequence"
 CONF_PAUSE_MS = "pause_ms"
 CONF_MAX_DELTA_FREQ = "max_delta_freq"
 CONF_MAX_DELTA_TIME = "max_delta_time"
+CONF_CONSECUTIVE_DETECTIONS = "consecutive_detections"
 CONF_PEAK_THRESHOLD = "peak_threshold"
 CONF_PEAK_TO_MEAN = "peak_to_mean"
 CONF_START_FREQ = "start_freq"
@@ -32,6 +33,7 @@ CONFIG_SCHEMA = binary_sensor.binary_sensor_schema(ChirpHappens).extend({
     cv.Required(CONF_PAUSE_MS): cv.int_,
     cv.Required(CONF_MAX_DELTA_FREQ): cv.int_,
     cv.Required(CONF_MAX_DELTA_TIME): cv.int_,
+    cv.Required(CONF_CONSECUTIVE_DETECTIONS): cv.int_,
     cv.Required(CONF_PEAK_THRESHOLD): cv.float_,
     cv.Required(CONF_PEAK_TO_MEAN): cv.float_,
     cv.Required(CONF_START_FREQ): cv.float_,
@@ -54,6 +56,7 @@ async def to_code(config):
     cg.add(var.set_pause_ms(config[CONF_PAUSE_MS]))
     cg.add(var.set_max_delta_freq(config[CONF_MAX_DELTA_FREQ]))
     cg.add(var.set_max_delta_time(config[CONF_MAX_DELTA_TIME]))
+    cg.add(var.set_consecutive_detections(config[CONF_CONSECUTIVE_DETECTIONS]))
     cg.add(var.set_peak_threshold(config[CONF_PEAK_THRESHOLD]))
     cg.add(var.set_peak_to_mean(config[CONF_PEAK_TO_MEAN]))
     cg.add(var.set_start_freq(config[CONF_START_FREQ]))

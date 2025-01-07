@@ -23,6 +23,7 @@ public:
     void set_pause_ms(int pause_ms) { pause_ms_ = pause_ms; }
     void set_max_delta_freq(int max_delta_freq) { max_delta_freq_ = max_delta_freq; }
     void set_max_delta_time(int max_delta_time) { max_delta_time_ = max_delta_time; }
+    void set_consecutive_detections(int consecutive_detections) { consecutive_detections_ = consecutive_detections; }
     void set_peak_threshold(float peak_threshold) { peak_threshold_ = peak_threshold; }
     void set_peak_to_mean(float peak_to_mean) { peak_to_mean_ = peak_to_mean; }
     void set_start_freq(float start_freq) { start_freq_ = start_freq; }
@@ -40,11 +41,14 @@ public:
     void dump_config() override;
 
 protected:
-    void calculate_peak(
+    void calculate_peak_mean(
         const std::vector<float> &data,
         float sample_rate,
-        float start_hz, float end_hz,
-        float *frequency, float *amplitude
+        float start_hz,
+        float end_hz,
+        float *peak_frequency,
+        float *peak_amplitude,
+        float *mean_amplitude
     );
 
     bool pattern_detected_;
@@ -54,6 +58,7 @@ protected:
     int pause_ms_;
     int max_delta_freq_;
     int max_delta_time_;
+    int consecutive_detections_;
     float peak_threshold_;
     float peak_to_mean_;
     float start_freq_;
@@ -75,6 +80,7 @@ protected:
     std::vector<int32_t> sample_buffer_;
     std::vector<float> v_real_, v_imag_;
     uint32_t sequence_index_;
+    uint32_t consecutive_count_;
     float last_frequency_;
     unsigned long last_time_;
     unsigned long last_detection_time_;
