@@ -71,7 +71,7 @@ binary_sensor:
     # Number of consecutive frequency detections to register one whistle tone in the sequence
     # The time that is needed for the specified number of detections can be calculated like this
     # time = (buffer_size / sample_rate) * consecutive_detections
-    # consecutive_detections: 5
+    consecutive_detections: 5
     
     # Peak amplitude threshold after FFT
     peak_threshold: 1e8
