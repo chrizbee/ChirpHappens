@@ -84,8 +84,12 @@ void ChirpHappens::loop()
     // This won't matter if it's the first frequency in sequence
     if (elapsed > pause_ms_ + max_delta_time_) {
         last_frequency_ = 0.0;
+
+        // Reset consecutive detections only if it's not the first frequency in sequence
+        // This is because elapsed always greater than pause_ms_ since there was no last_time_
+        if (sequence_index_ > 0)
+            consecutive_count_ = 0;
         sequence_index_ = 0;
-        consecutive_count_ = 0;
     }
 
 

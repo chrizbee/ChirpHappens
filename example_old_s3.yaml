@@ -1,0 +1,106 @@
+esphome:
+  name: chirphappens
+  platformio_options:
+    board_build.partitions: default.csv
+    build_flags:
+      - "-DARDUINO_USB_CDC_ON_BOOT=1"
+      - "-DBOARD_HAS_PSRAM"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 4MB
+  variant: ESP32S3
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: ""
+
+# Enable over the air updates
+ota:
+  - platform: esphome
+    password: ""
+
+# Default wifi configuration
+wifi:
+  # ssid: "Your WiFi SSID"
+  # password: "VerySafePassword"
+
+  # Enable fallback hotspot with captive portal in case wifi connection fails
+  ap:
+    ssid: "chirphappens"
+    password: ""
+
+captive_portal:
+
+# External chirphappens component
+# Either source from cloned repository or pull from GitHub
+external_components:
+  # - source: components
+  - source:
+      type: git
+      url: https://github.com/chrizbee/ChirpHappens
+      ref: main
+    components: [ chirphappens ]
+
+# ChirpHappens component with all available settings
+binary_sensor:
+  - platform: chirphappens
+    name: "ChirpHappens"
+    
+    # Sequence of whistle frequencies in Hz
+    # First value is absolute, all following values are relative to their previous measured values
+    # If the first valid measurement is 1780Hz, then this will be the base for the next value -> 1780Hz - 400
+    sequence: [1800, -400, 400]
+    
+    # Time between whistles in ms
+    pause_ms: 300
+
+    # Tolerance for whistle frequencies in Hz
+    # Next whistle will only count if in range sequence[i] +- max_delta_freq
+    max_delta_freq: 150
+    
+    # Tolerance for pause between whistles in ms
+    # Sequence will fail if the pause is longer than pause_ms + max_delta_time
+    max_delta_time: 150
+    
+    # Number of consecutive frequency detections to register one whistle tone in the sequence
+    # The time that is needed for the specified number of detections can be calculated like this
+    # time = (buffer_size / sample_rate) * consecutive_detections
+    consecutive_detections: 5
+    
+    # Peak amplitude threshold after FFT
+    peak_threshold: 1e8
+    
+    # Ratio of peak amplitude to mean amplitude after FFT
+    # This is a "budget SNR" to avoid random detects when there is much noise
+    peak_to_mean: 8.0
+    
+    # Frequency range that is of intereset to us in Hz
+    # Change this if your sequence exceeds this range
+    start_freq: 1000.0
+    end_freq: 2000.0
+
+    # Reset pattern detected state after x ms
+    reset_time: 300
+
+    # Sampling rate for I2S microphone in Hz
+    sample_rate: 8000
+
+    # Buffer size = number of samples = FFT window size
+    # The lower this value, the faster the computation ->
+    #   decrease if: "Component chirphappens.binary_sensor took a long time for an operation"
+    #   but: frequency_resolution = sample_rate / buffer_size
+    buffer_size: 256
+
+    # I2S pin configuration
+    pin_i2s_ws: 11       # I2S WS pin
+    pin_i2s_sck: 12      # I2S SCK pin
+    pin_i2s_sd: 13       # I2S SD pin
+    pin_i2s_lr: 14       # I2S L/R pin
+    i2s_channel: left    # I2S channel
+    i2s_port: I2S_NUM_0  # I2S port
