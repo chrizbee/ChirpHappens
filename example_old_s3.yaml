@@ -55,7 +55,7 @@ binary_sensor:
     # Sequence of whistle frequencies in Hz
     # First value is absolute, all following values are relative to their previous measured values
     # If the first valid measurement is 1780Hz, then this will be the base for the next value -> 1780Hz - 400
-    sequence: [1800, -400, 400]
+    sequence: [1750, -400, 400]
     
     # Time between whistles in ms
     pause_ms: 300
@@ -71,7 +71,7 @@ binary_sensor:
     # Number of consecutive frequency detections to register one whistle tone in the sequence
     # The time that is needed for the specified number of detections can be calculated like this
     # time = (buffer_size / sample_rate) * consecutive_detections
-    consecutive_detections: 5
+    consecutive_detections: 3
     
     # Peak amplitude threshold after FFT
     peak_threshold: 1e8
