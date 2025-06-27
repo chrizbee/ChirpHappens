@@ -80,8 +80,8 @@ binary_sensor:
     # This is a "budget SNR" to avoid random detects when there is much noise
     peak_to_mean: 8.0
     
-    # Frequency range that is of intereset to us in Hz
-    # Change this if your sequence exceeds this range
+    # Frequency band of intereset in Hz
+    # Change this if your sequence contains frequencies outside this range
     start_freq: 1000.0
     end_freq: 2000.0
 
