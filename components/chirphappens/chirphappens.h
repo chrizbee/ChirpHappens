@@ -32,7 +32,6 @@ public:
     void set_max_tone_ms(int max_tone_ms) { tracker_config_.max_tone_ms = max_tone_ms; }
     void set_max_rhythm(float max_rhythm) { tracker_config_.max_rhythm = max_rhythm; }
     void set_isolation_ms(int isolation_ms) { tracker_config_.isolation_ms = isolation_ms; }
-    void set_trailing_ms(int trailing_ms) { tracker_config_.trailing_ms = trailing_ms; }
     void set_cooldown_ms(int cooldown_ms) { tracker_config_.cooldown_ms = cooldown_ms; }
     void set_start_freq(float start_freq) { tracker_config_.start_freq = start_freq; }
     void set_end_freq(float end_freq) { tracker_config_.end_freq = end_freq; }

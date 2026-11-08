@@ -15,7 +15,9 @@ namespace chirphappens {
 // Works in three steps:
 // 1. Frame:   Is this spectrum a clean sine in the band? (level, purity)
 // 2. Tone:    Tonal frames with a stable pitch are merged into one tone
-// 3. Pattern: The last tones are compared with the sequence as a whole
+// 3. Pattern: The last tones are compared with the sequence as a whole.
+//             This happens as soon as the last tone is long enough, so there
+//             is no delay after the last tone.
 //
 // Time is counted in FFT frames, so it does not depend on loop() jitter.
 
@@ -27,9 +29,9 @@ struct TrackerConfig {
     // Frame
     float start_freq = 1000.0f;     // Band of interest in Hz
     float end_freq = 2800.0f;
-    float peak_threshold = 1e8f;    // Minimum peak amplitude after FFT
+    float peak_threshold = 3e6f;    // Minimum peak amplitude after FFT
     float peak_to_mean = 4.0f;      // Minimum peak amplitude / mean amplitude in band
-    float min_purity = 0.5f;        // Minimum share of total energy in the peak (0..1)
+    float min_purity = 0.35f;       // Minimum share of total energy in the peak (0..1)
 
     // Tone
     int min_frames = 3;             // Minimum number of frames of one tone
@@ -44,8 +46,13 @@ struct TrackerConfig {
     int max_delta_time = 300;       // Tolerance of pause_ms
     float max_rhythm = 2.0f;        // Longest / shortest time between tones
     int isolation_ms = 400;         // No other tone this close before the pattern
-    int trailing_ms = 200;          // No other tone this close after the pattern
     int cooldown_ms = 1000;         // Minimum time between two patterns
+};
+
+struct Frame {
+    float frequency = 0.0f;         // Interpolated peak frequency in Hz
+    float amplitude = 0.0f;         // Interpolated peak amplitude after FFT
+    float purity = 0.0f;            // Share of the energy in the peak
 };
 
 struct Tone {
@@ -53,6 +60,8 @@ struct Tone {
     uint32_t last = 0;              // Last frame
     float frequency = 0.0f;         // Median frequency in Hz
     float spread = 0.0f;            // Pitch wobble relative to frequency
+    float level = 0.0f;             // Mean peak level in dBFS
+    float purity = 0.0f;            // Mean share of the energy in the peak
     bool valid = false;             // Usable as part of a pattern
 };
 
@@ -73,19 +82,22 @@ protected:
         uint32_t start = 0;
         uint32_t last = 0;
         std::vector<float> frequencies;
+        float amplitude = 0.0f;     // Sum over all frames
+        float purity = 0.0f;        // Sum over all frames
         bool active() const { return !frequencies.empty(); }
-        void begin(uint32_t frame, float frequency);
-        void clear() { frequencies.clear(); }
+        void begin(uint32_t frame, const Frame &frame_data);
+        void add(uint32_t frame, const Frame &frame_data);
+        void clear() { frequencies.clear(); amplitude = purity = 0.0f; }
     };
 
-    bool analyze(const float *magnitudes, float *frequency) const;
-    void track(bool tonal, float frequency);
+    bool analyze(const float *magnitudes, Frame *frame) const;
+    void track(bool tonal, const Frame &frame);
+    Tone make_tone(Track &track) const;
     void close_track();
-    void match_pattern();
+    bool match_pattern(const Tone &last);
     void reject(const char *reason);
     float median(const std::vector<float> &values) const;
     float frames_to_ms(uint32_t frames) const { return frames * frame_ms_; }
-    uint32_t ms_to_frames(float ms) const;
 
     TrackerConfig c_;
     std::vector<float> targets_;    // Absolute frequencies of the sequence
@@ -99,8 +111,6 @@ protected:
     Track track_;
     Track candidate_;
     std::deque<Tone> history_;
-    bool fire_pending_ = false;
-    uint32_t fire_frame_ = 0;
     bool has_fired_ = false;
     uint32_t last_fired_ = 0;
 };

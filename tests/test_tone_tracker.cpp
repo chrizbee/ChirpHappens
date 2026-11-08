@@ -89,7 +89,7 @@ int main()
     expect("too few tones", patterns(sequence({ 1750, 1350 })), 0);
     expect("too short tones", patterns(sequence({ 1750, 1350, 1750 }, 0.3f, 0.05f)), 0);
     expect("too slow", patterns(sequence({ 1750, 1350, 1750 }, 0.9f, 0.5f)), 0);
-    expect("followed by a tone", patterns(sequence({ 1750, 1350, 1750, 1350 })), 0);
+    expect("followed by a tone", patterns(sequence({ 1750, 1350, 1750, 1350 })), 1);
     expect("preceded by a tone", patterns(sequence({ 1500, 1750, 1350, 1750 })), 0);
 
     std::vector<float> uneven;

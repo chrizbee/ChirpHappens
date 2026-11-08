@@ -76,16 +76,16 @@ Detection works in three steps, so that a sloppy whistle is accepted while every
 
 1. **Frame**: Only a clean sine counts. Nearly all of the energy has to be in one peak (`min_purity`), which is not the case for speech and most music.
 2. **Tone**: Frames with a stable pitch are merged into one tone with a median frequency. Slides between tones and outliers are ignored.
-3. **Pattern**: The last tones are compared as a whole. Only the intervals have to match, so you can whistle higher or lower. The tones also have to be evenly spaced with silence before (`isolation_ms`) and after the sequence (`trailing_ms`), which rejects melodies, doorbells and sirens.
+3. **Pattern**: The last tones are compared as a whole. Only the intervals have to match, so you can whistle higher or lower. The tones also have to be evenly spaced with silence before the sequence (`isolation_ms`), which rejects melodies and sirens.
 
-The sensor triggers `trailing_ms` after the last tone.
+The sensor triggers as soon as the last tone has lasted `consecutive_detections` frames.
 
 ### Tuning
 
 With the default log level, every recognized tone is logged. Whistle your sequence and compare with your configuration:
 
 ```
-[D][chirphappens]: Tone: 1762 Hz, 224 ms, spread 0.012
+[D][chirphappens]: Tone: 1762 Hz, 224 ms, -58 dBFS, purity 0.81, spread 0.012
 ```
 
 If there are no tones at all, the frames are rejected: lower `peak_threshold` or `min_purity`. If there are tones but no detection, adapt `sequence`, `pause_ms` or the tolerances. Raise tolerances one at a time, as each of them lets in more false positives.

@@ -61,7 +61,8 @@ void ChirpHappens::setup()
 
     // Log every tone, this is what you need to adapt the configuration to your whistle
     tracker_.on_tone = [](const Tone &tone, float ms) {
-        ESP_LOGD(TAG, "Tone: %.0f Hz, %.0f ms, spread %.3f%s", tone.frequency, ms, tone.spread, tone.valid ? "" : " (invalid)");
+        ESP_LOGD(TAG, "Tone: %.0f Hz, %.0f ms, %.0f dBFS, purity %.2f, spread %.3f%s", tone.frequency, ms, tone.level,
+                 tone.purity, tone.spread, tone.valid ? "" : " (invalid)");
     };
     tracker_.on_reject = [](const char *reason) {
         ESP_LOGD(TAG, "Pattern rejected: %s", reason);

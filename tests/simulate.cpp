@@ -51,7 +51,7 @@ int main(int argc, char **argv)
     const std::map<std::string, int *> ints = {
         { "min_frames", &c.min_frames }, { "max_tone_ms", &c.max_tone_ms },
         { "pause_ms", &c.pause_ms }, { "max_delta_time", &c.max_delta_time },
-        { "isolation_ms", &c.isolation_ms }, { "trailing_ms", &c.trailing_ms }, { "cooldown_ms", &c.cooldown_ms },
+        { "isolation_ms", &c.isolation_ms }, { "cooldown_ms", &c.cooldown_ms },
     };
     for (const auto &entry : set) {
         if (floats.count(entry.first))
@@ -72,8 +72,8 @@ int main(int argc, char **argv)
     const float frame_s = c.fft_size / c.sample_rate;
     if (!quiet) {
         tracker.on_tone = [&](const Tone &tone, float ms) {
-            std::printf("%8.2f s  tone %6.0f Hz  %5.0f ms  spread %.3f%s\n", tone.start * frame_s,
-                        tone.frequency, ms, tone.spread, tone.valid ? "" : "  (invalid)");
+            std::printf("%8.2f s  tone %6.0f Hz  %5.0f ms  %4.0f dBFS  purity %.2f  spread %.3f%s\n", tone.start * frame_s,
+                        tone.frequency, ms, tone.level, tone.purity, tone.spread, tone.valid ? "" : "  (invalid)");
         };
         tracker.on_reject = [](const char *reason) { std::printf("           rejected: %s\n", reason); };
     }

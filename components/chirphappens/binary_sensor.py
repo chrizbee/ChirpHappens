@@ -18,7 +18,6 @@ CONF_MIN_PURITY = "min_purity"
 CONF_MAX_TONE_MS = "max_tone_ms"
 CONF_MAX_RHYTHM = "max_rhythm"
 CONF_ISOLATION_MS = "isolation_ms"
-CONF_TRAILING_MS = "trailing_ms"
 CONF_COOLDOWN_MS = "cooldown_ms"
 CONF_START_FREQ = "start_freq"
 CONF_END_FREQ = "end_freq"
@@ -47,11 +46,10 @@ CONFIG_SCHEMA = binary_sensor.binary_sensor_schema(ChirpHappens).extend({
     cv.Required(CONF_END_FREQ): cv.float_,
     cv.Required(CONF_RESET_TIME): cv.int_,
     cv.Optional(CONF_MAX_DELTA_BASE): cv.float_,
-    cv.Optional(CONF_MIN_PURITY, default=0.5): cv.float_range(min=0.0, max=1.0),
+    cv.Optional(CONF_MIN_PURITY, default=0.35): cv.float_range(min=0.0, max=1.0),
     cv.Optional(CONF_MAX_TONE_MS, default=1200): cv.int_,
     cv.Optional(CONF_MAX_RHYTHM, default=2.0): cv.float_,
     cv.Optional(CONF_ISOLATION_MS, default=400): cv.int_,
-    cv.Optional(CONF_TRAILING_MS, default=200): cv.int_,
     cv.Optional(CONF_COOLDOWN_MS, default=1000): cv.int_,
     cv.Optional(CONF_SAMPLE_RATE, default=8000): cv.int_,
     cv.Optional(CONF_BUFFER_SIZE, default=512): cv.int_,
@@ -78,7 +76,6 @@ async def to_code(config):
     cg.add(var.set_max_tone_ms(config[CONF_MAX_TONE_MS]))
     cg.add(var.set_max_rhythm(config[CONF_MAX_RHYTHM]))
     cg.add(var.set_isolation_ms(config[CONF_ISOLATION_MS]))
-    cg.add(var.set_trailing_ms(config[CONF_TRAILING_MS]))
     cg.add(var.set_cooldown_ms(config[CONF_COOLDOWN_MS]))
     cg.add(var.set_start_freq(config[CONF_START_FREQ]))
     cg.add(var.set_end_freq(config[CONF_END_FREQ]))

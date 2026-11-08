@@ -16,10 +16,19 @@ static const int PEAK_WIDTH = 2;
 // Lower limit of the energy reference, below is mostly hum and rumble
 static const float BROAD_START_FREQ = 300.0f;
 
-void ToneTracker::Track::begin(uint32_t frame, float frequency)
+void ToneTracker::Track::begin(uint32_t frame, const Frame &frame_data)
 {
-    start = last = frame;
-    frequencies.assign(1, frequency);
+    clear();
+    start = frame;
+    add(frame, frame_data);
+}
+
+void ToneTracker::Track::add(uint32_t frame, const Frame &frame_data)
+{
+    last = frame;
+    frequencies.push_back(frame_data.frequency);
+    amplitude += frame_data.amplitude;
+    purity += frame_data.purity;
 }
 
 void ToneTracker::configure(const TrackerConfig &config)
@@ -42,36 +51,21 @@ void ToneTracker::configure(const TrackerConfig &config)
     }
 }
 
-uint32_t ToneTracker::ms_to_frames(float ms) const
-{
-    return static_cast<uint32_t>(std::ceil(ms / frame_ms_));
-}
-
 bool ToneTracker::process_frame(const float *magnitudes)
 {
-    float frequency = 0.0f;
-    const bool tonal = analyze(magnitudes, &frequency);
-    track(tonal, frequency);
-    ++frame_;
+    Frame frame;
+    const bool tonal = analyze(magnitudes, &frame);
+    track(tonal, frame);
 
-    // A pattern only counts after the required silence following it
-    if (fire_pending_) {
-        // Any tonal frame counts, as there is not enough time to wait for a whole tone
-        if (track_.active()) {
-            fire_pending_ = false;
-            reject("followed by another tone");
-        } else if (static_cast<int32_t>(frame_ - fire_frame_) >= 0) {
-            fire_pending_ = false;
-            has_fired_ = true;
-            last_fired_ = frame_;
-            history_.clear();
-            return true;
-        }
-    }
-    return false;
+    // Check the pattern as soon as the current tone is long enough
+    bool detected = false;
+    if (track_.active() && static_cast<int>(track_.frequencies.size()) == c_.min_frames)
+        detected = match_pattern(make_tone(track_));
+    ++frame_;
+    return detected;
 }
 
-bool ToneTracker::analyze(const float *m, float *frequency) const
+bool ToneTracker::analyze(const float *m, Frame *frame) const
 {
     if (start_index_ >= end_index_)
         return false;
@@ -115,29 +109,30 @@ bool ToneTracker::analyze(const float *m, float *frequency) const
     if (peak_energy < c_.min_purity * total_energy)
         return false;
 
-    *frequency = (peak + delta) * c_.sample_rate / c_.fft_size;
+    frame->frequency = (peak + delta) * c_.sample_rate / c_.fft_size;
+    frame->amplitude = amplitude;
+    frame->purity = peak_energy / total_energy;
     return true;
 }
 
-void ToneTracker::track(bool tonal, float frequency)
+void ToneTracker::track(bool tonal, const Frame &frame)
 {
+    const float frequency = frame.frequency;
     if (tonal) {
         if (!track_.active()) {
-            track_.begin(frame_, frequency);
+            track_.begin(frame_, frame);
 
         // Same pitch: Continue the tone
         } else if (std::fabs(frequency - median(track_.frequencies)) <= SAME_TONE * frequency) {
-            track_.frequencies.push_back(frequency);
-            track_.last = frame_;
+            track_.add(frame_, frame);
             candidate_.clear();
 
         // Different pitch: Could be an outlier or already the next tone
         } else if (candidate_.active() &&
                    std::fabs(frequency - median(candidate_.frequencies)) <= SAME_TONE * frequency) {
-            candidate_.frequencies.push_back(frequency);
-            candidate_.last = frame_;
+            candidate_.add(frame_, frame);
         } else {
-            candidate_.begin(frame_, frequency);
+            candidate_.begin(frame_, frame);
         }
     } else {
         candidate_.clear();
@@ -152,79 +147,99 @@ void ToneTracker::track(bool tonal, float frequency)
     }
 }
 
+Tone ToneTracker::make_tone(Track &track) const
+{
+    std::vector<float> frequencies(track.frequencies);
+    const size_t count = frequencies.size();
+    Tone tone;
+    tone.start = track.start;
+    tone.last = track.last;
+    tone.frequency = median(frequencies);
+
+    // Wobble without the outermost frames (start and end of a tone)
+    std::sort(frequencies.begin(), frequencies.end());
+    const size_t cut = count / 10;
+    tone.spread = (frequencies[count - 1 - cut] - frequencies[cut]) / tone.frequency;
+
+    // Level relative to a full scale sine (Hann window: amplitude * N / 4)
+    const float full_scale = 2147483648.0f * c_.fft_size / 4.0f;
+    tone.level = 20.0f * std::log10(track.amplitude / count / full_scale);
+    tone.purity = track.purity / count;
+
+    const float ms = frames_to_ms(tone.last - tone.start + 1);
+    tone.valid = ms <= c_.max_tone_ms && tone.spread <= c_.max_spread;
+    return tone;
+}
+
 void ToneTracker::close_track()
 {
-    std::vector<float> &frequencies = track_.frequencies;
-    const bool long_enough = static_cast<int>(frequencies.size()) >= c_.min_frames;
-    if (long_enough) {
-        Tone tone;
-        tone.start = track_.start;
-        tone.last = track_.last;
-        tone.frequency = median(frequencies);
-
-        // Wobble without the outermost frames (start and end of a tone)
-        std::sort(frequencies.begin(), frequencies.end());
-        const size_t cut = frequencies.size() / 10;
-        const float range = frequencies[frequencies.size() - 1 - cut] - frequencies[cut];
-        tone.spread = range / tone.frequency;
-
-        const float ms = frames_to_ms(tone.last - tone.start + 1);
-        tone.valid = ms <= c_.max_tone_ms && tone.spread <= c_.max_spread;
+    if (static_cast<int>(track_.frequencies.size()) >= c_.min_frames) {
+        const Tone tone = make_tone(track_);
         if (on_tone)
-            on_tone(tone, ms);
-
+            on_tone(tone, frames_to_ms(tone.last - tone.start + 1));
         history_.push_back(tone);
-        while (history_.size() > targets_.size() + 1)
+        while (history_.size() > targets_.size())
             history_.pop_front();
-        match_pattern();
     }
     track_.clear();
 }
 
-void ToneTracker::match_pattern()
+bool ToneTracker::match_pattern(const Tone &last)
 {
-    // Is the last tone even the end of a sequence?
+    // The tones before the current one plus the current one
     const size_t count = targets_.size();
-    if (count == 0 || history_.size() < count)
-        return;
-    const size_t first = history_.size() - count;
-    const Tone &base = history_[first];
+    if (count == 0 || history_.size() < count - 1)
+        return false;
+    std::vector<const Tone *> tones;
+    for (size_t i = history_.size() - (count - 1); i < history_.size(); ++i)
+        tones.push_back(&history_[i]);
+    tones.push_back(&last);
+    const Tone &base = *tones[0];
 
     // Pitch: Whistling higher or lower keeps the interval, not the distance
     // in Hz, so all tones are scaled to the pitch of the sequence.
     if (std::fabs(base.frequency - targets_[0]) > c_.max_delta_base)
-        return;
+        return false;
     const float scale = targets_[0] / base.frequency;
     for (size_t i = 0; i < count; ++i) {
-        if (!history_[first + i].valid)
-            return;
-        if (i > 0 && std::fabs(history_[first + i].frequency * scale - targets_[i]) > c_.max_delta_freq)
-            return;
+        if (!tones[i]->valid)
+            return false;
+        if (i > 0 && std::fabs(tones[i]->frequency * scale - targets_[i]) > c_.max_delta_freq)
+            return false;
     }
 
     // From here on it sounds right, so the reason for a rejection is of interest
     // Rhythm: The time between the tones has to be plausible and steady
     float shortest = 0.0f, longest = 0.0f;
     for (size_t i = 1; i < count; ++i) {
-        const float pause = frames_to_ms(history_[first + i].start - history_[first + i - 1].start);
-        if (std::fabs(pause - c_.pause_ms) > c_.max_delta_time)
-            return reject("pause out of range");
+        const float pause = frames_to_ms(tones[i]->start - tones[i - 1]->start);
+        if (std::fabs(pause - c_.pause_ms) > c_.max_delta_time) {
+            reject("pause out of range");
+            return false;
+        }
         shortest = i == 1 ? pause : std::min(shortest, pause);
         longest = i == 1 ? pause : std::max(longest, pause);
     }
-    if (longest > c_.max_rhythm * shortest)
-        return reject("uneven rhythm");
+    if (longest > c_.max_rhythm * shortest) {
+        reject("uneven rhythm");
+        return false;
+    }
 
     // Part of a melody?
-    if (first > 0 && frames_to_ms(base.start - history_[first - 1].last) < c_.isolation_ms)
-        return reject("preceded by another tone");
+    if (history_.size() >= count && frames_to_ms(base.start - history_[history_.size() - count].last) < c_.isolation_ms) {
+        reject("preceded by another tone");
+        return false;
+    }
 
-    if (has_fired_ && frames_to_ms(base.start - last_fired_) < c_.cooldown_ms)
-        return reject("cooldown");
+    if (has_fired_ && frames_to_ms(base.start - last_fired_) < c_.cooldown_ms) {
+        reject("cooldown");
+        return false;
+    }
 
-    // Wait for the silence after the pattern
-    fire_pending_ = true;
-    fire_frame_ = history_.back().last + ms_to_frames(c_.trailing_ms);
+    has_fired_ = true;
+    last_fired_ = frame_;
+    history_.clear();
+    return true;
 }
 
 void ToneTracker::reject(const char *reason)

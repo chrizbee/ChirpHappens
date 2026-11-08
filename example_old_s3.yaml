@@ -82,7 +82,9 @@ binary_sensor:
     max_tone_ms: 1200
 
     # Peak amplitude threshold after FFT
-    peak_threshold: 1e8
+    # 3e6 is about -80 dBFS, so whistles from another room are still detected
+    # Purity and peak_to_mean keep noise out, so this can be low
+    peak_threshold: 3e6
 
     # Ratio of peak amplitude to mean amplitude in the frequency band after FFT
     peak_to_mean: 4.0
@@ -90,15 +92,12 @@ binary_sensor:
     # Minimum share of the whole spectrum's energy that has to be in the peak (0 to 1)
     # A whistle is almost a pure sine, speech and music are not
     # This is the most important protection against false positives
-    min_purity: 0.5
+    # Raise to 0.5 if there are false positives, lower for whistles from further away
+    min_purity: 0.35
 
     # There must not be any other tone this close before the sequence in ms
     # This rejects melodies
     isolation_ms: 400
-
-    # There must not be any other tone this close after the sequence in ms
-    # The sensor triggers this long after the last tone, below 200 melodies get through
-    trailing_ms: 200
 
     # Ignore further sequences for this long after a detection in ms
     cooldown_ms: 1000
