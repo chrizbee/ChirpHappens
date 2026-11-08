@@ -99,8 +99,9 @@ binary_sensor:
     # This rejects melodies
     isolation_ms: 400
 
-    # Ignore further sequences for this long after a detection in ms
-    cooldown_ms: 1000
+    # After a detection the sequence starts from scratch: The last tone and all tones
+    # starting within this time in ms are discarded
+    cooldown_ms: 500
 
     # Frequency range that is of intereset to us in Hz
     # Change this if your sequence exceeds this range

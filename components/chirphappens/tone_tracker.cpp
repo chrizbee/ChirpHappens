@@ -174,13 +174,23 @@ Tone ToneTracker::make_tone(Track &track) const
 void ToneTracker::close_track()
 {
     if (static_cast<int>(track_.frequencies.size()) >= c_.min_frames) {
-        const Tone tone = make_tone(track_);
+        Tone tone = make_tone(track_);
         if (on_tone)
             on_tone(tone, frames_to_ms(tone.last - tone.start + 1));
+
+        // After a pattern start from scratch: The tone that completed it and
+        // tones right after it must not be part of the next one. They are kept
+        // as invalid, so that a following pattern is not isolated.
+        const int32_t since_pattern = static_cast<int32_t>(tone.start - last_fired_);
+        if (track_consumed_ || (has_fired_ && frames_to_ms(since_pattern) < c_.cooldown_ms)) {
+            reject(track_consumed_ ? "tone already used" : "tone during cooldown");
+            tone.valid = false;
+        }
         history_.push_back(tone);
         while (history_.size() > targets_.size())
             history_.pop_front();
     }
+    track_consumed_ = false;
     track_.clear();
 }
 
@@ -231,12 +241,8 @@ bool ToneTracker::match_pattern(const Tone &last)
         return false;
     }
 
-    if (has_fired_ && frames_to_ms(base.start - last_fired_) < c_.cooldown_ms) {
-        reject("cooldown");
-        return false;
-    }
-
     has_fired_ = true;
+    track_consumed_ = true;
     last_fired_ = frame_;
     history_.clear();
     return true;

@@ -81,6 +81,13 @@ int main()
     add_tone(twice, 3.6f, 0.2f, 1750);
     expect("repeated", patterns(twice), 2);
 
+    // Whistling again right after a detection still works
+    std::vector<float> soon = sequence({ 1750, 1350, 1750 });
+    add_tone(soon, 1.9f, 0.2f, 1750);
+    add_tone(soon, 2.2f, 0.2f, 1350);
+    add_tone(soon, 2.5f, 0.2f, 1750);
+    expect("repeated soon", patterns(soon), 2);
+
     // Must not be detected
     expect("silence", patterns(std::vector<float>(static_cast<size_t>(RATE))), 0);
     expect("reversed", patterns(sequence({ 1350, 1750, 1350 })), 0);
@@ -90,6 +97,8 @@ int main()
     expect("too short tones", patterns(sequence({ 1750, 1350, 1750 }, 0.3f, 0.05f)), 0);
     expect("too slow", patterns(sequence({ 1750, 1350, 1750 }, 0.9f, 0.5f)), 0);
     expect("followed by a tone", patterns(sequence({ 1750, 1350, 1750, 1350 })), 1);
+    expect("continued sequence counts once", patterns(sequence({ 1750, 1350, 1750, 1350, 1750 })), 1);
+    expect("continued twice counts once", patterns(sequence({ 1750, 1350, 1750, 1350, 1750, 1350, 1750 })), 1);
     expect("preceded by a tone", patterns(sequence({ 1500, 1750, 1350, 1750 })), 0);
 
     std::vector<float> uneven;

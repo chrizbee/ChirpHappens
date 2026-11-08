@@ -46,7 +46,7 @@ struct TrackerConfig {
     int max_delta_time = 300;       // Tolerance of pause_ms
     float max_rhythm = 2.0f;        // Longest / shortest time between tones
     int isolation_ms = 400;         // No other tone this close before the pattern
-    int cooldown_ms = 1000;         // Minimum time between two patterns
+    int cooldown_ms = 500;          // Tones starting this soon after a pattern are discarded
 };
 
 struct Frame {
@@ -97,7 +97,7 @@ protected:
     bool match_pattern(const Tone &last);
     void reject(const char *reason);
     float median(const std::vector<float> &values) const;
-    float frames_to_ms(uint32_t frames) const { return frames * frame_ms_; }
+    float frames_to_ms(int32_t frames) const { return frames * frame_ms_; }
 
     TrackerConfig c_;
     std::vector<float> targets_;    // Absolute frequencies of the sequence
@@ -112,6 +112,7 @@ protected:
     Track candidate_;
     std::deque<Tone> history_;
     bool has_fired_ = false;
+    bool track_consumed_ = false;   // Current tone completed a pattern
     uint32_t last_fired_ = 0;
 };
 
