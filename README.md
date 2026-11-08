@@ -70,3 +70,39 @@ i2s_channel: left    # I2S channel
 i2s_port: I2S_NUM_0  # I2S port
 ```
 
+## Detection
+
+Detection works in three steps, so that a sloppy whistle is accepted while everything else is not:
+
+1. **Frame**: Only a clean sine counts. Nearly all of the energy has to be in one peak (`min_purity`), which is not the case for speech and most music.
+2. **Tone**: Frames with a stable pitch are merged into one tone with a median frequency. Slides between tones and outliers are ignored.
+3. **Pattern**: The last tones are compared as a whole. Only the intervals have to match, so you can whistle higher or lower. The tones also have to be evenly spaced with silence before (`isolation_ms`) and after the sequence (`trailing_ms`), which rejects melodies, doorbells and sirens.
+
+The sensor triggers `trailing_ms` after the last tone.
+
+### Tuning
+
+With the default log level, every recognized tone is logged. Whistle your sequence and compare with your configuration:
+
+```
+[D][chirphappens]: Tone: 1762 Hz, 224 ms, spread 0.012
+```
+
+If there are no tones at all, the frames are rejected: lower `peak_threshold` or `min_purity`. If there are tones but no detection, adapt `sequence`, `pause_ms` or the tolerances. Raise tolerances one at a time, as each of them lets in more false positives.
+
+### Testing
+
+The detection in [tone_tracker.cpp](components/chirphappens/tone_tracker.cpp) has no hardware dependencies and can be tested on a PC.
+
+```bash
+g++ -std=c++14 -O2 -o test_tone_tracker tests/test_tone_tracker.cpp components/chirphappens/tone_tracker.cpp
+./test_tone_tracker
+```
+
+To try settings on a recording of your own, use the simulator. It prints all tones and patterns.
+
+```bash
+g++ -std=c++14 -O2 -o simulate tests/simulate.cpp components/chirphappens/tone_tracker.cpp
+ffmpeg -i whistle.wav -ac 1 -ar 8000 -f f32le whistle.f32
+./simulate whistle.f32 min_purity=0.4
+```

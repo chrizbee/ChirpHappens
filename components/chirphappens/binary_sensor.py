@@ -8,11 +8,18 @@ DEPENDENCIES = ["esp32"]
 
 CONF_SEQUENCE = "sequence"
 CONF_PAUSE_MS = "pause_ms"
+CONF_MAX_DELTA_BASE = "max_delta_base"
 CONF_MAX_DELTA_FREQ = "max_delta_freq"
 CONF_MAX_DELTA_TIME = "max_delta_time"
 CONF_CONSECUTIVE_DETECTIONS = "consecutive_detections"
 CONF_PEAK_THRESHOLD = "peak_threshold"
 CONF_PEAK_TO_MEAN = "peak_to_mean"
+CONF_MIN_PURITY = "min_purity"
+CONF_MAX_TONE_MS = "max_tone_ms"
+CONF_MAX_RHYTHM = "max_rhythm"
+CONF_ISOLATION_MS = "isolation_ms"
+CONF_TRAILING_MS = "trailing_ms"
+CONF_COOLDOWN_MS = "cooldown_ms"
 CONF_START_FREQ = "start_freq"
 CONF_END_FREQ = "end_freq"
 CONF_RESET_TIME = "reset_time"
@@ -39,6 +46,13 @@ CONFIG_SCHEMA = binary_sensor.binary_sensor_schema(ChirpHappens).extend({
     cv.Required(CONF_START_FREQ): cv.float_,
     cv.Required(CONF_END_FREQ): cv.float_,
     cv.Required(CONF_RESET_TIME): cv.int_,
+    cv.Optional(CONF_MAX_DELTA_BASE): cv.float_,
+    cv.Optional(CONF_MIN_PURITY, default=0.5): cv.float_range(min=0.0, max=1.0),
+    cv.Optional(CONF_MAX_TONE_MS, default=1200): cv.int_,
+    cv.Optional(CONF_MAX_RHYTHM, default=2.0): cv.float_,
+    cv.Optional(CONF_ISOLATION_MS, default=400): cv.int_,
+    cv.Optional(CONF_TRAILING_MS, default=200): cv.int_,
+    cv.Optional(CONF_COOLDOWN_MS, default=1000): cv.int_,
     cv.Optional(CONF_SAMPLE_RATE, default=8000): cv.int_,
     cv.Optional(CONF_BUFFER_SIZE, default=512): cv.int_,
     cv.Optional(CONF_PIN_I2S_WS, default=7): cv.int_,
@@ -54,11 +68,18 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     cg.add(var.set_sequence(config[CONF_SEQUENCE]))
     cg.add(var.set_pause_ms(config[CONF_PAUSE_MS]))
+    cg.add(var.set_max_delta_base(config.get(CONF_MAX_DELTA_BASE, config[CONF_MAX_DELTA_FREQ] * 1.5)))
     cg.add(var.set_max_delta_freq(config[CONF_MAX_DELTA_FREQ]))
     cg.add(var.set_max_delta_time(config[CONF_MAX_DELTA_TIME]))
     cg.add(var.set_consecutive_detections(config[CONF_CONSECUTIVE_DETECTIONS]))
     cg.add(var.set_peak_threshold(config[CONF_PEAK_THRESHOLD]))
     cg.add(var.set_peak_to_mean(config[CONF_PEAK_TO_MEAN]))
+    cg.add(var.set_min_purity(config[CONF_MIN_PURITY]))
+    cg.add(var.set_max_tone_ms(config[CONF_MAX_TONE_MS]))
+    cg.add(var.set_max_rhythm(config[CONF_MAX_RHYTHM]))
+    cg.add(var.set_isolation_ms(config[CONF_ISOLATION_MS]))
+    cg.add(var.set_trailing_ms(config[CONF_TRAILING_MS]))
+    cg.add(var.set_cooldown_ms(config[CONF_COOLDOWN_MS]))
     cg.add(var.set_start_freq(config[CONF_START_FREQ]))
     cg.add(var.set_end_freq(config[CONF_END_FREQ]))
     cg.add(var.set_reset_time(config[CONF_RESET_TIME]))

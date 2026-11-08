@@ -3,9 +3,10 @@
 #include "esphome/core/component.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "arduinoFFT.h"
+#include "tone_tracker.h"
 #include <driver/i2s.h>
+#include <string>
 #include <vector>
-#include <numeric>
 
 // Use port 0 no matter what if we have only one
 // This is the case for ESP32-C3
@@ -19,15 +20,22 @@ namespace chirphappens {
 class ChirpHappens : public binary_sensor::BinarySensor, public Component {
 public:
     // Configuration methods
-    void set_sequence(const std::vector<float> &sequence) { sequence_ = sequence; }
-    void set_pause_ms(int pause_ms) { pause_ms_ = pause_ms; }
-    void set_max_delta_freq(int max_delta_freq) { max_delta_freq_ = max_delta_freq; }
-    void set_max_delta_time(int max_delta_time) { max_delta_time_ = max_delta_time; }
-    void set_consecutive_detections(int consecutive_detections) { consecutive_detections_ = consecutive_detections; }
-    void set_peak_threshold(float peak_threshold) { peak_threshold_ = peak_threshold; }
-    void set_peak_to_mean(float peak_to_mean) { peak_to_mean_ = peak_to_mean; }
-    void set_start_freq(float start_freq) { start_freq_ = start_freq; }
-    void set_end_freq(float end_freq) { end_freq_ = end_freq; }
+    void set_sequence(const std::vector<float> &sequence) { tracker_config_.sequence = sequence; }
+    void set_pause_ms(int pause_ms) { tracker_config_.pause_ms = pause_ms; }
+    void set_max_delta_base(float max_delta_base) { tracker_config_.max_delta_base = max_delta_base; }
+    void set_max_delta_freq(int max_delta_freq) { tracker_config_.max_delta_freq = max_delta_freq; }
+    void set_max_delta_time(int max_delta_time) { tracker_config_.max_delta_time = max_delta_time; }
+    void set_consecutive_detections(int consecutive_detections) { tracker_config_.min_frames = consecutive_detections; }
+    void set_peak_threshold(float peak_threshold) { tracker_config_.peak_threshold = peak_threshold; }
+    void set_peak_to_mean(float peak_to_mean) { tracker_config_.peak_to_mean = peak_to_mean; }
+    void set_min_purity(float min_purity) { tracker_config_.min_purity = min_purity; }
+    void set_max_tone_ms(int max_tone_ms) { tracker_config_.max_tone_ms = max_tone_ms; }
+    void set_max_rhythm(float max_rhythm) { tracker_config_.max_rhythm = max_rhythm; }
+    void set_isolation_ms(int isolation_ms) { tracker_config_.isolation_ms = isolation_ms; }
+    void set_trailing_ms(int trailing_ms) { tracker_config_.trailing_ms = trailing_ms; }
+    void set_cooldown_ms(int cooldown_ms) { tracker_config_.cooldown_ms = cooldown_ms; }
+    void set_start_freq(float start_freq) { tracker_config_.start_freq = start_freq; }
+    void set_end_freq(float end_freq) { tracker_config_.end_freq = end_freq; }
     void set_reset_time(int reset_time) { reset_time_ = reset_time; }
     void set_sample_rate(uint32_t sample_rate) { sample_rate_ = sample_rate; }
     void set_buffer_size(int buffer_size) { buffer_size_ = buffer_size; }
@@ -41,28 +49,11 @@ public:
     void dump_config() override;
 
 protected:
-    void calculate_peak_mean(
-        const std::vector<float> &data,
-        float sample_rate,
-        float start_hz,
-        float end_hz,
-        float *peak_frequency,
-        float *peak_amplitude,
-        float *mean_amplitude
-    );
-
     bool pattern_detected_;
 
-    // Sequence configuration and thresholds
-    std::vector<float> sequence_;
-    int pause_ms_;
-    int max_delta_freq_;
-    int max_delta_time_;
-    int consecutive_detections_;
-    float peak_threshold_;
-    float peak_to_mean_;
-    float start_freq_;
-    float end_freq_;
+    // Detection
+    TrackerConfig tracker_config_;
+    ToneTracker tracker_;
     int reset_time_;
 
     // Audio and I2S configuration
@@ -79,10 +70,6 @@ protected:
     ArduinoFFT<float> fft_;
     std::vector<int32_t> sample_buffer_;
     std::vector<float> v_real_, v_imag_;
-    uint32_t sequence_index_;
-    uint32_t consecutive_count_;
-    float last_frequency_;
-    unsigned long last_time_;
     unsigned long last_detection_time_;
 };
 

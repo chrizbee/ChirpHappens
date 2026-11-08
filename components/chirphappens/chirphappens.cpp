@@ -51,12 +51,21 @@ void ChirpHappens::setup()
 
     // Initialize variables
     pattern_detected_ = false;
-    sequence_index_ = 0;
-    consecutive_count_ = 0;
-    last_frequency_ = 0.0f;
-    last_time_ = 0;
     last_detection_time_ = 0;
     publish_initial_state(false);
+
+    // Initialize detection
+    tracker_config_.sample_rate = sample_rate_;
+    tracker_config_.fft_size = buffer_size_;
+    tracker_.configure(tracker_config_);
+
+    // Log every tone, this is what you need to adapt the configuration to your whistle
+    tracker_.on_tone = [](const Tone &tone, float ms) {
+        ESP_LOGD(TAG, "Tone: %.0f Hz, %.0f ms, spread %.3f%s", tone.frequency, ms, tone.spread, tone.valid ? "" : " (invalid)");
+    };
+    tracker_.on_reject = [](const char *reason) {
+        ESP_LOGD(TAG, "Pattern rejected: %s", reason);
+    };
 }
 
 void ChirpHappens::loop()
@@ -74,24 +83,6 @@ void ChirpHappens::loop()
         pattern_detected_ = false;
         this->publish_state(false);
     }
-    
-    // Check if enough time has passed already
-    unsigned long elapsed = current_time - last_time_;
-    if (elapsed < pause_ms_ - max_delta_time_)
-        return;
-
-    // Reset if too much time has passed
-    // This won't matter if it's the first frequency in sequence
-    if (elapsed > pause_ms_ + max_delta_time_) {
-        last_frequency_ = 0.0;
-
-        // Reset consecutive detections only if it's not the first frequency in sequence
-        // This is because elapsed always greater than pause_ms_ since there was no last_time_
-        if (sequence_index_ > 0)
-            consecutive_count_ = 0;
-        sequence_index_ = 0;
-    }
-
 
     // Fill real and complex arrays
     for (int i = 0; i < buffer_size_; ++i) {
@@ -106,105 +97,21 @@ void ChirpHappens::loop()
     fft_.compute(FFT_FORWARD);
     fft_.complexToMagnitude();
 
-    // Get frequency, peak / mean amplitude and budget snr
-    // majorPeak() always uses the whole range, so I wrote calculate_peak()
-    float frequency, peak_amplitude, mean_amplitude;
-    calculate_peak_mean(v_real_, sample_rate_, start_freq_, end_freq_, &frequency, &peak_amplitude, &mean_amplitude);
-    // float mean_amplitude = std::accumulate(v_real_.begin(), v_real_.end(), 0.0f) / buffer_size_;
-    float peak_to_mean = peak_amplitude / mean_amplitude;
-
-    // Check if thresholds are exceeded and reset consecutive counter if not
-    if (peak_amplitude < peak_threshold_ || peak_to_mean < peak_to_mean_) {
-        consecutive_count_ = 0;
-        return;
+    // Check if this frame completes the pattern
+    if (tracker_.process_frame(v_real_.data())) {
+        ESP_LOGI(TAG, "Pattern detected");
+        this->publish_state(true);
+        last_detection_time_ = current_time;
+        pattern_detected_ = true;
     }
-
-    // Check for index in range
-    if (sequence_index_ >= sequence_.size())
-        return;
-
-    // Get delta values
-    float expected_frequency = last_frequency_ + sequence_[sequence_index_];
-    float delta_frequency = abs(frequency - expected_frequency);
-    int delta_time = abs(pause_ms_ - (int)elapsed);
-
-    // First frequency will be more forgiving
-    if ((sequence_index_ == 0 && delta_frequency <= max_delta_freq_ * 1.5) ||
-        (delta_frequency <= max_delta_freq_ && delta_time <= max_delta_time_)) {
-
-        // Move to the next frequency only if enough consecutive detections
-        if (++consecutive_count_ >= consecutive_detections_) {
-
-            // Reset consecutive counter for next frequency
-            consecutive_count_ = 0;
-
-            // Set last frequency to this one
-            // First measured frequency will be the base for all upcoming
-            last_frequency_ = sequence_index_ == 0 ? frequency : expected_frequency;
-
-            // Check if end of pattern is reached
-            if (++sequence_index_ >= sequence_.size()) {
-                this->publish_state(true);
-                last_detection_time_ = current_time;
-                pattern_detected_ = true;
-                sequence_index_ = 0;
-            
-            // Else store current time
-            } else last_time_ = current_time;
-        }
-    
-    // Reset consecutive counter if the current frequency is invalid
-    } else consecutive_count_ = 0;
 }
 
 void ChirpHappens::dump_config() {
     ESP_LOGCONFIG(TAG, "ChirpHappens");
-}
-
-void ChirpHappens::calculate_peak_mean(const std::vector<float> &data, float sample_rate, float start_hz, float end_hz, float *peak_frequency, float *peak_amplitude, float *mean_amplitude)
-{
-    // Calculate frequency resolution
-    int sample_count = data.size();
-    float frequency_resolution = sample_rate / sample_count;
-
-    // Define the range in terms of indices
-    int start_index = (start_hz == -1) ? 0 : std::max(0, static_cast<int>(std::ceil(start_hz / frequency_resolution)));
-    int end_index = (end_hz == -1) ? (sample_count / 2) : std::min(sample_count / 2, static_cast<int>(std::floor(end_hz / frequency_resolution)));
-
-    // Ensure valid range
-    if (start_index >= end_index) {
-        *peak_frequency = 0;
-        *peak_amplitude = 0;
-        return;
-    }
-
-    // Find the maximum in the specified range
-    auto max_element_iter = std::max_element(data.begin() + start_index, data.begin() + end_index);
-    int max_index = std::distance(data.begin(), max_element_iter);
-
-    // Calculate mean amplitude for the specified range
-    *mean_amplitude = std::accumulate(data.begin() + start_index, data.begin() + end_index, 0.0f) / (end_index - start_index + 1);
-
-    // Calculate interpolated peak (parabolic interpolation for better accuracy)
-    if (max_index > 0 && max_index < (sample_count / 2) - 1) {
-        float y0 = data[max_index - 1];
-        float y1 = data[max_index];
-        float y2 = data[max_index + 1];
-        
-        // Calculate the parabolic offset
-        float delta = 0.5f * (y0 - y2) / (y0 - 2.0f * y1 + y2);
-
-        // Interpolated frequency
-        *peak_frequency = (max_index + delta) * frequency_resolution;
-
-        // Interpolated amplitude (magnitude)
-        *peak_amplitude = std::abs(y1 - (y0 - y2) * delta / 2.0f);
-    
-    // Edge case: no interpolation possible
-    } else {
-        *peak_frequency = max_index * frequency_resolution;
-        *peak_amplitude = std::abs(*max_element_iter);
-    }
+    ESP_LOGCONFIG(TAG, "  Band: %.0f - %.0f Hz", tracker_config_.start_freq, tracker_config_.end_freq);
+    ESP_LOGCONFIG(TAG, "  Tolerance: first tone %.0f Hz, others %.0f Hz", tracker_config_.max_delta_base, tracker_config_.max_delta_freq);
+    ESP_LOGCONFIG(TAG, "  Pause: %d +- %d ms", tracker_config_.pause_ms, tracker_config_.max_delta_time);
+    ESP_LOGCONFIG(TAG, "  Minimum purity: %.2f", tracker_config_.min_purity);
 }
 
 }  // namespace chirphappens

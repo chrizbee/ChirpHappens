@@ -3,7 +3,6 @@ esphome:
   platformio_options:
     board_build.partitions: default.csv
     build_flags:
-      - "-DARDUINO_USB_CDC_ON_BOOT=1"
       - "-DBOARD_HAS_PSRAM"
 
 esp32:
@@ -13,12 +12,13 @@ esp32:
   framework:
     type: arduino
 
-# Enable logging
+# Enable logging via USB
 logger:
+  hardware_uart: USB_SERIAL_JTAG
 
 # Enable Home Assistant API
+# Add an encryption key for secure communication: https://esphome.io/components/api/
 api:
-  password: ""
 
 # Enable over the air updates
 ota:
@@ -53,37 +53,60 @@ binary_sensor:
     name: "ChirpHappens"
     
     # Sequence of whistle frequencies in Hz
-    # First value is absolute, all following values are relative to their previous measured values
-    # If the first valid measurement is 1780Hz, then this will be the base for the next value -> 1780Hz - 400
+    # First value is absolute, all following values are relative to their previous value
+    # Only the intervals have to match: Whistling higher or lower scales the whole sequence
     sequence: [1750, -400, 400]
-    
-    # Time between whistles in ms
-    pause_ms: 300
 
-    # Tolerance for whistle frequencies in Hz
-    # Next whistle will only count if in range sequence[i] +- max_delta_freq
-    max_delta_freq: 150
-    
-    # Tolerance for pause between whistles in ms
-    # Sequence will fail if the pause is longer than pause_ms + max_delta_time
-    max_delta_time: 150
-    
-    # Number of consecutive frequency detections to register one whistle tone in the sequence
-    # The time that is needed for the specified number of detections can be calculated like this
+    # Time from the start of one tone to the start of the next in ms
+    pause_ms: 420
+
+    # Tolerance of the first tone in Hz (default: max_delta_freq * 1.5)
+    max_delta_base: 500
+
+    # Tolerance of the following tones in Hz, relative to the first tone
+    # Raising this will accept sloppier whistles, but also cause more false positives
+    max_delta_freq: 180
+
+    # Tolerance of pause_ms in ms
+    max_delta_time: 300
+
+    # Longest / shortest time between tones: Tones have to be evenly spaced
+    max_rhythm: 2.0
+
+    # Minimum number of frames of one tone
+    # The time that is needed for the specified number of frames can be calculated like this
     # time = (buffer_size / sample_rate) * consecutive_detections
     consecutive_detections: 3
-    
+
+    # Longer tones in ms are not part of a sequence
+    max_tone_ms: 1200
+
     # Peak amplitude threshold after FFT
     peak_threshold: 1e8
-    
-    # Ratio of peak amplitude to mean amplitude after FFT
-    # This is a "budget SNR" to avoid random detects when there is much noise
-    peak_to_mean: 8.0
-    
+
+    # Ratio of peak amplitude to mean amplitude in the frequency band after FFT
+    peak_to_mean: 4.0
+
+    # Minimum share of the whole spectrum's energy that has to be in the peak (0 to 1)
+    # A whistle is almost a pure sine, speech and music are not
+    # This is the most important protection against false positives
+    min_purity: 0.5
+
+    # There must not be any other tone this close before the sequence in ms
+    # This rejects melodies
+    isolation_ms: 400
+
+    # There must not be any other tone this close after the sequence in ms
+    # The sensor triggers this long after the last tone, below 200 melodies get through
+    trailing_ms: 200
+
+    # Ignore further sequences for this long after a detection in ms
+    cooldown_ms: 1000
+
     # Frequency range that is of intereset to us in Hz
     # Change this if your sequence exceeds this range
     start_freq: 1000.0
-    end_freq: 2000.0
+    end_freq: 2800.0
 
     # Reset pattern detected state after x ms
     reset_time: 300
