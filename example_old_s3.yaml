@@ -82,7 +82,7 @@ binary_sensor:
     max_tone_ms: 1200
 
     # Peak amplitude threshold after FFT
-    # 3e6 is about -80 dBFS, so whistles from another room are still detected
+    # 3e6 is about -93 dBFS, 1e8 about -63 dBFS, so whistles from another room are still detected
     # Purity and peak_to_mean keep noise out, so this can be low
     peak_threshold: 3e6
 
