@@ -5,8 +5,9 @@
 namespace esphome {
 namespace chirphappens {
 
-// Frames a tone may drop out without being split
-static const uint32_t MAX_GAP_FRAMES = 1;
+// Frames a tone may drop out without being split (about 100 ms)
+// Quiet whistles from further away often drop out for a moment.
+static const uint32_t MAX_GAP_FRAMES = 3;
 // Frames a different pitch needs to take over from the current tone
 static const size_t TAKEOVER_FRAMES = 2;
 // Frames with a pitch this close (relative) belong to the same tone

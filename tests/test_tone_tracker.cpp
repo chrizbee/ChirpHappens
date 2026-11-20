@@ -74,6 +74,14 @@ int main()
     expect("slow", patterns(sequence({ 1750, 1350, 1750 }, 0.7f, 0.5f)), 1);
     expect("no gap between tones", patterns(sequence({ 1750, 1350, 1750 }, 0.3f, 0.3f)), 1);
 
+    // A quiet tone drops out for a moment, as seen with real whistles
+    std::vector<float> dropout;
+    add_tone(dropout, 0.5f, 0.12f, 1750);
+    add_tone(dropout, 0.70f, 0.1f, 1750);
+    add_tone(dropout, 0.9f, 0.2f, 1350);
+    add_tone(dropout, 1.2f, 0.2f, 1750);
+    expect("dropout in first tone", patterns(dropout), 1);
+
     // Repeating after the cooldown triggers again
     std::vector<float> twice = sequence({ 1750, 1350, 1750 });
     add_tone(twice, 3.0f, 0.2f, 1750);
