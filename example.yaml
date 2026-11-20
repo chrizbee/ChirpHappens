@@ -60,7 +60,7 @@ binary_sensor:
     pause_ms: 420
 
     # Tolerance of the first tone in Hz (default: max_delta_freq * 1.5)
-    max_delta_base: 500
+    max_delta_base: 600
 
     # Tolerance of the following tones in Hz, relative to the first tone
     # Raising this will accept sloppier whistles, but also cause more false positives
@@ -104,7 +104,7 @@ binary_sensor:
 
     # Frequency band of intereset in Hz
     # Change this if your sequence contains frequencies outside this range
-    start_freq: 1000.0
+    start_freq: 900.0
     end_freq: 2800.0
 
     # Reset pattern detected state after x ms

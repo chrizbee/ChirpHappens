@@ -27,7 +27,7 @@ struct TrackerConfig {
     int fft_size = 256;
 
     // Frame
-    float start_freq = 1000.0f;     // Band of interest in Hz
+    float start_freq = 900.0f;      // Band of interest in Hz
     float end_freq = 2800.0f;
     float peak_threshold = 3e6f;    // Minimum peak amplitude after FFT
     float peak_to_mean = 4.0f;      // Minimum peak amplitude / mean amplitude in band
@@ -40,7 +40,7 @@ struct TrackerConfig {
 
     // Pattern
     std::vector<float> sequence = { 1750.0f, -400.0f, 400.0f };
-    float max_delta_base = 500.0f;  // Tolerance of the first tone in Hz
+    float max_delta_base = 600.0f;  // Tolerance of the first tone in Hz
     float max_delta_freq = 180.0f;  // Tolerance of the following tones in Hz
     int pause_ms = 420;             // Time from the start of a tone to the start of the next
     int max_delta_time = 300;       // Tolerance of pause_ms
